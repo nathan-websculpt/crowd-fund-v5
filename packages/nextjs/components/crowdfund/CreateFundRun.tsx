@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { isAddress, encodeFunctionData } from "viem";
-import { useAccount } from "wagmi";
-import { useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
+import { encodeFunctionData, isAddress } from "viem";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 export const CreateFundRun = () => {
   const router = useRouter();
-  const userAccount = useAccount();
   const [titleInput, setTitleInput] = useState("");
   const [descInput, setDescInput] = useState("");
   const [error, setError] = useState(false);
@@ -17,10 +18,15 @@ export const CreateFundRun = () => {
   const [additionalAddressOne, setAdditionalAddressOne] = useState("");
   const [additionalAddressTwo, setAdditionalAddressTwo] = useState("");
   const [ownersList, setOwnersList] = useState<string[]>([]);
+  const { scaAddress, scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isTxnLoading, setIsTxnLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   useEffect(() => {
     if (ownersList.length > 0) {
-      writeAsync();
+      sendUserOp();
     }
   }, [ownersList]);
 
@@ -31,7 +37,7 @@ export const CreateFundRun = () => {
       logs.map(log => {
         const { fundRunId, owners, title } = log.args;
         console.log("📡 New Fund Run Event \ncreator:", owners, "\nID: ", fundRunId, "\nTitle: ", title);
-        if (owners !== undefined) if (userAccount.address === owners[0]) router.push(`/social/${fundRunId}`);
+        if (owners !== undefined) if (scaAddress === owners[0]) router.push(`/social/${fundRunId}`);
       });
     },
   });
@@ -41,35 +47,57 @@ export const CreateFundRun = () => {
     setErrorMsg(msg);
     setError(true);
   };
-  
-  // const uoCallData = encodeFunctionData({
-  //   abi: [
-  //     {
-  //       inputs: [
-  //         {
-  //           internalType: "string",
-  //           name: "txt",
-  //           type: "string",
-  //         },
-  //       ],
-  //       name: "tst2",
-  //       outputs: [],
-  //       stateMutability: "nonpayable",
-  //       type: "function",
-  //     },
-  //   ],
-  //   functionName: "tst2",
-  //   args: [txtInput],
-  // });
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
+  const uoCallData = encodeFunctionData({
+    abi: [
+      {
+        inputs: [
+          {
+            internalType: "string",
+            name: "_title",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "_description",
+            type: "string",
+          },
+          {
+            internalType: "address[]",
+            name: "_owners",
+            type: "address[]",
+          },
+        ],
+        name: "createFundRun",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+    ],
     functionName: "createFundRun",
     args: [titleInput, descInput, ownersList],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
-    },
   });
+
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsTxnLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: uoCallData,
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsTxnLoading(false);
+    }
+  };
 
   const validateThenWrite = () => {
     setErrorMsg("");
@@ -86,7 +114,7 @@ export const CreateFundRun = () => {
         newErr("Please provide a VALID address for your co-owner.");
         return;
       }
-      if (additionalAddressOne === userAccount.address) {
+      if (additionalAddressOne === scaAddress) {
         newErr("You input your own wallet address as the co-owner ... please select a different address.");
         return;
       }
@@ -99,7 +127,7 @@ export const CreateFundRun = () => {
         newErr("The two co-owners are the same -- they must be different wallets.");
         return;
       }
-      if (additionalAddressOne === userAccount.address || additionalAddressTwo === userAccount.address) {
+      if (additionalAddressOne === scaAddress || additionalAddressTwo === scaAddress) {
         newErr("You input your own wallet address as one of the co-owners ... please select a different address.");
         return;
       }
@@ -110,8 +138,8 @@ export const CreateFundRun = () => {
 
     // validation complete
     const oList: string[] = [];
-    if (userAccount?.address !== undefined) {
-      oList.push(userAccount.address);
+    if (scaAddress !== undefined) {
+      oList.push(scaAddress);
       if (walletCount === 2) oList.push(additionalAddressOne);
       else if (walletCount === 3) {
         oList.push(additionalAddressOne);
@@ -208,9 +236,9 @@ export const CreateFundRun = () => {
             <button
               className="w-10/12 mx-auto md:w-3/5 btn btn-primary"
               onClick={() => validateThenWrite()}
-              disabled={isLoading}
+              disabled={isTxnLoading}
             >
-              {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Start My Fund</>}
+              {isTxnLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Start My Fund</>}
             </button>
           </div>
         </div>
