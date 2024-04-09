@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { isAddress } from "viem";
+import { isAddress, encodeFunctionData } from "viem";
 import { useAccount } from "wagmi";
 import { useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
@@ -41,6 +41,26 @@ export const CreateFundRun = () => {
     setErrorMsg(msg);
     setError(true);
   };
+  
+  // const uoCallData = encodeFunctionData({
+  //   abi: [
+  //     {
+  //       inputs: [
+  //         {
+  //           internalType: "string",
+  //           name: "txt",
+  //           type: "string",
+  //         },
+  //       ],
+  //       name: "tst2",
+  //       outputs: [],
+  //       stateMutability: "nonpayable",
+  //       type: "function",
+  //     },
+  //   ],
+  //   functionName: "tst2",
+  //   args: [txtInput],
+  // });
 
   const { writeAsync, isLoading } = useScaffoldContractWrite({
     contractName: "CrowdFund",
