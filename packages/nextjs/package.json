@@ -14,6 +14,9 @@
     "vercel:yolo": "vercel --build-env NEXT_PUBLIC_IGNORE_BUILD_ERROR=true"
   },
   "dependencies": {
+    "@alchemy/aa-accounts": "^1.2.3",
+    "@alchemy/aa-alchemy": "^1.2.3",
+    "@alchemy/aa-core": "^1.2.3",
     "@apollo/client": "^3.7.12",
     "@ethersproject/providers": "~5.7.2",
     "@heroicons/react": "~2.0.11",
