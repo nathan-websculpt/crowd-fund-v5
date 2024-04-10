@@ -28,7 +28,7 @@ const Entry: NextPage = () => {
                 </>
               ) : (
                 <>
-                  <h1>No Smart-Contract-Account Found...</h1>
+                  <h1>Uh oh ... No Smart-Contract-Account Found...</h1>
                 </>
               )}
               <div className="mt-7">
