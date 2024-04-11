@@ -3,6 +3,7 @@ import { encodeFunctionData } from "viem";
 import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
 import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { notification } from "~~/utils/scaffold-eth";
 import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface FollowButtonProps {
@@ -32,7 +33,7 @@ export const FollowButton = (fundRun: FollowButtonProps) => {
       },
     ],
     functionName: "follow",
-    args: [fundRun?.fundRunId],
+    args: [fundRun.fundRunId],
   });
 
   const sendUserOp = async () => {

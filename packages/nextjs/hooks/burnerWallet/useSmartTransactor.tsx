@@ -51,6 +51,7 @@ export const TxnNotification = ({
  * @returns function that takes in transaction function as callback, shows UI feedback for transaction and returns a promise of the transaction hash
  */
 export const useSmartTransactor = (_walletClient?: WalletClient): TransactionFunc => {
+  console.log("TAG A::_>");
   let walletClient = _walletClient;
   const { data } = useWalletClient();
   const { provider } = useSmartAccount();
@@ -59,7 +60,9 @@ export const useSmartTransactor = (_walletClient?: WalletClient): TransactionFun
   }
 
   const result: TransactionFunc = async (tx, options) => {
+    console.log("\t TAG B::_>");
     if (!walletClient) {
+      console.log("useWalletClient() results in ...", useWalletClient());
       notification.error("Cannot access account");
       console.error("⚡️ ~ file: useSmartTransactor.tsx ~ error");
       return;

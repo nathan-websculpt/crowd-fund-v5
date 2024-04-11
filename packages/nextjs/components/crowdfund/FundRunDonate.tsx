@@ -43,12 +43,11 @@ export const FundRunDonate = (fundRun: FundRunProps) => {
       },
     ],
     functionName: "donateToFundRun",
-    args: [fundRun?.id],
+    args: [fundRun.id],
     // nonce: 7,
   });
 
   const sendUserOp = async () => {
-    console.log(scaAddress);
     if (!scaSigner) {
       notification.error("Cannot access smart account");
       return;

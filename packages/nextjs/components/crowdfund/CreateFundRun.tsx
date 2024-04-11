@@ -169,7 +169,6 @@ export const CreateFundRun = () => {
             ) : (
               <></>
             )}
-            {/* up-and-down */}
             <label className="text-lg font-bold">Title</label>
             <input
               type="text"
@@ -185,7 +184,6 @@ export const CreateFundRun = () => {
               value={descInput}
               onChange={e => setDescInput(e.target.value)}
             />
-            {/* ^^^ up-and-down ^^^ */}
             <label className="text-lg font-bold">Total Number of Addresses</label>
             <div className="form-control">
               <label className="cursor-pointer label">
