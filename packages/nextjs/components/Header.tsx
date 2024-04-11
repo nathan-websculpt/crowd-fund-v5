@@ -101,7 +101,7 @@ export const Header = () => {
         <ul className="hidden gap-2 px-1 lg:flex lg:flex-nowrap menu menu-horizontal">{navLinks}</ul>
       </div>
       <div className="flex-grow mr-4 navbar-end">
-        <RainbowKitCustomConnectButton />
+        {/* <RainbowKitCustomConnectButton /> */}
         <FaucetButton />
       </div>
     </div>

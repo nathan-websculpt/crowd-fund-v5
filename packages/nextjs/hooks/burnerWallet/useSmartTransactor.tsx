@@ -2,8 +2,7 @@
 import { useSmartAccount } from "./useSmartAccount";
 import { SendUserOperationResult } from "@alchemy/aa-core";
 import { WriteContractResult, getPublicClient } from "@wagmi/core";
-import { Hash, TransactionReceipt, WalletClient } from "viem";
-import { useWalletClient } from "wagmi";
+import { Hash, TransactionReceipt } from "viem";
 import { getParsedError } from "~~/components/scaffold-eth/Contract/utilsContract";
 import { getBlockExplorerTxLink, getUserOpExplorerTxLink, notification } from "~~/utils/scaffold-eth";
 
@@ -50,25 +49,15 @@ export const TxnNotification = ({
  * @param _walletClient - Optional wallet client to use. If not provided, will use the one from useWalletClient.
  * @returns function that takes in transaction function as callback, shows UI feedback for transaction and returns a promise of the transaction hash
  */
-export const useSmartTransactor = (_walletClient?: WalletClient): TransactionFunc => {
-  let walletClient = _walletClient;
-  const { data } = useWalletClient();
+export const useSmartTransactor = (): TransactionFunc => {
   const { provider } = useSmartAccount();
-  if (walletClient === undefined && data) {
-    walletClient = data;
-  }
 
   const result: TransactionFunc = async (tx, options) => {
-    if (!walletClient) {
-      notification.error("Cannot access account");
-      console.error("⚡️ ~ file: useSmartTransactor.tsx ~ error");
-      return;
-    }
-
     let notificationId = null;
     let userOpHash: Awaited<WriteContractResult>["hash"] | undefined = undefined;
     try {
-      const network = await walletClient.getChainId();
+      const network = 11155111; //TODO: Get chain id in a way that doesn't use wagmi/useWalletClient
+      
       // Get full transaction from public client
       const publicClient = getPublicClient();
 
