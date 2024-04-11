@@ -57,7 +57,7 @@ export const useSmartTransactor = (): TransactionFunc => {
     let userOpHash: Awaited<WriteContractResult>["hash"] | undefined = undefined;
     try {
       const network = 11155111; //TODO: Get chain id in a way that doesn't use wagmi/useWalletClient
-      
+
       // Get full transaction from public client
       const publicClient = getPublicClient();
 
