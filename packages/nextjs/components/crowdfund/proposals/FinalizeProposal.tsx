@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLazyQuery } from "@apollo/client";
+import { encodeFunctionData } from "viem";
 import getNonce from "~~/helpers/getNonce";
 import { GQL_SIGNATURES } from "~~/helpers/getQueries";
-import { useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo, useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { notification } from "~~/utils/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface FinalizeProposalProps {
   fundRunId: number;
@@ -20,6 +25,12 @@ export const FinalizeProposal = (proposal: FinalizeProposalProps) => {
   const [signaturesList, setSignaturesList] = useState<string[]>();
 
   const [getProposal, { loading, error, data }] = useLazyQuery(GQL_SIGNATURES());
+
+  const { scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   useEffect(() => {
     if (error !== undefined && error !== null) console.log("GQL_SIGNATURES Query Error: ", error);
@@ -43,7 +54,8 @@ export const FinalizeProposal = (proposal: FinalizeProposalProps) => {
 
   useEffect(() => {
     if (signaturesList !== undefined && signaturesList.length > 0) {
-      writeAsync();
+      console.log("signatures list before sending user op: ", signaturesList);
+      sendUserOp();
     }
   }, [signaturesList]);
 
@@ -55,22 +67,92 @@ export const FinalizeProposal = (proposal: FinalizeProposalProps) => {
 
   const finishProposal = () => {
     const nonce = getNonce(fundRunNonce);
+    console.log("after getNonce(): ", nonce);
     setNonce(nonce);
   };
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
-    functionName: "multisigWithdraw",
-    args: [tx, nonce, proposal.fundRunId, proposal.proposalId, signaturesList],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                {
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "amount",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "address",
+                      name: "to",
+                      type: "address",
+                    },
+                    {
+                      internalType: "address",
+                      name: "proposedBy",
+                      type: "address",
+                    },
+                    {
+                      internalType: "string",
+                      name: "reason",
+                      type: "string",
+                    },
+                  ],
+                  internalType: "struct CrowdFundLibrary.MultiSigRequest",
+                  name: "_tx",
+                  type: "tuple",
+                },
+                {
+                  internalType: "uint256",
+                  name: "_nonce",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_id",
+                  type: "uint16",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_proposalId",
+                  type: "uint16",
+                },
+                {
+                  internalType: "bytes[]",
+                  name: "_signaturesList",
+                  type: "bytes[]",
+                },
+              ],
+              name: "multisigWithdraw",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "multisigWithdraw",
+          args: [tx, nonce, proposal.fundRunId, proposal.proposalId, signaturesList],
+        }),
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
       setNonce(undefined);
-    },
-    onError: err => {
-      console.log("Transaction Error Message", err?.message);
-      setNonce(undefined);
-    },
-  });
+    }
+  };
+
   return (
     <>
       <td className="w-1/12 text-center md:py-4">
