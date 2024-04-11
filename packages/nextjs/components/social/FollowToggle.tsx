@@ -2,19 +2,19 @@ import { useEffect } from "react";
 import { FollowButton } from "./FollowButton";
 import { UnfollowButton } from "./UnfollowButton";
 import { useQuery } from "@apollo/client";
-import { useAccount } from "wagmi";
 import { GQL_SOCIAL_FOLLOWERS_By_FundRunId_and_Address } from "~~/helpers/getQueries";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
 
 interface FollowToggleProps {
   fundRunId: number;
 }
 
 export const FollowToggle = (fundRun: FollowToggleProps) => {
-  const userAccount = useAccount();
+  const { scaAddress } = useSmartAccount();
   const { error, data } = useQuery(GQL_SOCIAL_FOLLOWERS_By_FundRunId_and_Address(), {
     variables: {
       fundRunId: fundRun.fundRunId,
-      user: userAccount.address,
+      user: scaAddress,
     },
     pollInterval: 5000,
   });
