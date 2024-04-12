@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Address } from "../scaffold-eth/Address";
 import { CommentLikeButton } from "./CommentLikeButton";
 import { useAccount } from "wagmi";
-import { useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
+import { encodeFunctionData } from "viem";
 
 interface CommentProps {
   postId: string;
@@ -17,23 +21,19 @@ export const CommentInteractions = (c: CommentProps) => {
   const userAccount = useAccount();
   const [showReply, setShowReply] = useState(false);
   const [thisCommentsText, setThisCommentsText] = useState("");
+  const { scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   const validateThenWrite = () => {
     if (thisCommentsText.trim() === "") {
       notification.warning("Please provide text for this comment.", { position: "top-right", duration: 6000 });
       return;
     }
-    writeAsync();
+    sendUserOp();
   };
-
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
-    functionName: "createComment",
-    args: [c.postId, c.commentId, thisCommentsText],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
-    },
-  });
 
   useScaffoldEventSubscriber({
     contractName: "CrowdFund",
@@ -48,6 +48,57 @@ export const CommentInteractions = (c: CommentProps) => {
       });
     },
   });
+
+  const uoCallData = encodeFunctionData({
+    abi: [
+      {
+        inputs: [
+          {
+            internalType: "bytes",
+            name: "_postId",
+            type: "bytes",
+          },
+          {
+            internalType: "bytes",
+            name: "_parentCommentId",
+            type: "bytes",
+          },
+          {
+            internalType: "string",
+            name: "_commentText",
+            type: "string",
+          },
+        ],
+        name: "createComment",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+    ],
+    functionName: "createComment",
+    args: [c.postId, c.commentId, thisCommentsText],
+  });
+
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: uoCallData,
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>

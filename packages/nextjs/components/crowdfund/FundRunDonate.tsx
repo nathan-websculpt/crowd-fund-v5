@@ -15,7 +15,7 @@ interface FundRunProps {
 
 export const FundRunDonate = (fundRun: FundRunProps) => {
   const [donationInput, setDonationInput] = useState("");
-  const { scaAddress, scaSigner } = useSmartAccount();
+  const { scaSigner } = useSmartAccount();
   const transactor = useSmartTransactor();
   const [isLoading, setIsLoading] = useState(false);
   const contractNames = getContractNames();
