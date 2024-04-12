@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import router from "next/router";
-import { SignMessageReturnType, formatEther, isAddress, parseEther, toBytes } from "viem";
-import { useAccount, useWalletClient } from "wagmi";
+import { SignMessageReturnType, encodeFunctionData, formatEther, isAddress, parseEther, toBytes } from "viem";
 import { Address, IntegerVariant, isValidInteger } from "~~/components/scaffold-eth";
 import getDigest from "~~/helpers/getDigest";
 import getNonce from "~~/helpers/getNonce";
-import { useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo, useScaffoldContractRead } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface CreateProposalProps {
   fundRunId: number;
@@ -17,7 +19,6 @@ interface CreateProposalProps {
 }
 
 export const CreateProposal = (fundRun: CreateProposalProps) => {
-  const userAccount = useAccount();
   const [transferDisplay, setTransferDisplay] = useState("0.1");
   const [transferInput, setTransferInput] = useState<bigint>(parseEther("0.1"));
   const [toAddressInput, setToAddressInput] = useState("");
@@ -25,12 +26,15 @@ export const CreateProposal = (fundRun: CreateProposalProps) => {
   const [creationSignature, setCreationSignature] = useState<SignMessageReturnType>();
   const [error, setError] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
-  const { data: walletClient } = useWalletClient();
+  const { scaAddress, scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   useEffect(() => {
     if (creationSignature !== undefined) {
-      writeAsync();
+      sendUserOp();
     }
   }, [creationSignature]);
 
@@ -77,37 +81,94 @@ export const CreateProposal = (fundRun: CreateProposalProps) => {
       return;
     }
     const nonce = getNonce(fundRunNonce);
-    const digest = await getDigest(nonce, transferInput, toAddressInput, userAccount.address, reasonInput);
+    const digest = await getDigest(nonce, transferInput, toAddressInput, scaAddress, reasonInput);
 
-    const proposalCreationSig: any = await walletClient?.signMessage({
-      account: walletClient.account,
+    const proposalCreationSig: any = await scaSigner.signMessage({
+      account: scaAddress,
       message: { raw: toBytes(digest) },
     });
     setCreationSignature(proposalCreationSig);
   };
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
-    functionName: "createMultisigProposal",
-    args: [
-      creationSignature,
-      fundRun?.fundRunId,
-      {
-        amount: transferInput,
-        to: toAddressInput,
-        proposedBy: userAccount.address,
-        reason: reasonInput,
-      },
-    ],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
-      setCreationSignature(undefined);
-    },
-    onError: err => {
-      console.log("Transaction Error Message", err?.message);
-      setCreationSignature(undefined);
-    },
-  });
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                {
+                  internalType: "bytes",
+                  name: "_signature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_id",
+                  type: "uint16",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "amount",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "address",
+                      name: "to",
+                      type: "address",
+                    },
+                    {
+                      internalType: "address",
+                      name: "proposedBy",
+                      type: "address",
+                    },
+                    {
+                      internalType: "string",
+                      name: "reason",
+                      type: "string",
+                    },
+                  ],
+                  internalType: "struct CrowdFundLibrary.MultiSigRequest",
+                  name: "_tx",
+                  type: "tuple",
+                },
+              ],
+              name: "createMultisigProposal",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "createMultisigProposal",
+          args: [
+            creationSignature,
+            fundRun.fundRunId,
+            {
+              amount: transferInput,
+              to: toAddressInput,
+              proposedBy: scaAddress,
+              reason: reasonInput,
+            },
+          ],
+        }),
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>

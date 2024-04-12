@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { SignMessageReturnType, toBytes } from "viem";
-import { useWalletClient } from "wagmi";
+import { SignMessageReturnType, encodeFunctionData, toBytes } from "viem";
 import getDigest from "~~/helpers/getDigest";
 import getNonce from "~~/helpers/getNonce";
-import { useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo, useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { notification } from "~~/utils/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface SupportProposalProps {
   fundRunId: number;
@@ -16,11 +19,15 @@ interface SupportProposalProps {
 
 export const SupportProposal = (proposal: SupportProposalProps) => {
   const [supportSignature, setSupportSignature] = useState<SignMessageReturnType>();
-  const { data: walletClient } = useWalletClient();
+  const { scaAddress, scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   useEffect(() => {
     if (supportSignature !== undefined) {
-      writeAsync();
+      sendUserOp();
     }
   }, [supportSignature]);
 
@@ -34,26 +41,62 @@ export const SupportProposal = (proposal: SupportProposalProps) => {
     const nonce = getNonce(fundRunNonce);
     const digest = await getDigest(nonce, proposal.amount, proposal.to, proposal.proposedBy, proposal.reason);
 
-    const proposalSupportSig: any = await walletClient?.signMessage({
-      account: walletClient.account,
+    const proposalSupportSig: any = await scaSigner?.signMessage({
+      account: scaAddress,
       message: { raw: toBytes(digest) },
     });
     setSupportSignature(proposalSupportSig);
   };
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
-    functionName: "supportMultisigProposal",
-    args: [supportSignature, proposal?.fundRunId, proposal?.proposalId],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                {
+                  internalType: "bytes",
+                  name: "_signature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_id",
+                  type: "uint16",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_proposalId",
+                  type: "uint16",
+                },
+              ],
+              name: "supportMultisigProposal",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "supportMultisigProposal",
+          args: [supportSignature, proposal?.fundRunId, proposal?.proposalId],
+        }),
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
       setSupportSignature(undefined);
-    },
-    onError: err => {
-      console.log("Transaction Error Message", err?.message);
-      setSupportSignature(undefined);
-    },
-  });
+    }
+  };
 
   return (
     <>

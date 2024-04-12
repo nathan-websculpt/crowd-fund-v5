@@ -38,7 +38,7 @@ export const useSmartAccount = () => {
         rpcClient: provider,
         owner: burnerSigner,
         chain,
-        entryPointAddress: getDefaultEntryPointAddress(chain),
+        entryPointAddress: getDefaultEntryPointAddress(chain), //TODO: this must have to change when a Gas Manager is used?
         factoryAddress: getDefaultLightAccountFactoryAddress(chain),
       });
     });

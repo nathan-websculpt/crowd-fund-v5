@@ -1,4 +1,9 @@
-import { useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useState } from "react";
+import { encodeFunctionData } from "viem";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface PostProps {
   postId: string;
@@ -7,14 +12,52 @@ interface PostProps {
 }
 
 export const PostLikeButton = (post: PostProps) => {
-  const { writeAsync } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
+  const { scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
+
+  const uoCallData = encodeFunctionData({
+    abi: [
+      {
+        inputs: [
+          {
+            internalType: "bytes",
+            name: "_postId",
+            type: "bytes",
+          },
+        ],
+        name: "likePost",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+    ],
     functionName: "likePost",
     args: [post.postId],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
-    },
   });
+
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: uoCallData,
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -51,7 +94,7 @@ export const PostLikeButton = (post: PostProps) => {
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
-            onClick={() => writeAsync()}
+            onClick={() => sendUserOp()}
           >
             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
             <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />

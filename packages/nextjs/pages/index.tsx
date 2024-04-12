@@ -7,7 +7,7 @@ import { Address, Balance } from "~~/components/scaffold-eth";
 import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
 
 const Entry: NextPage = () => {
-  const { scaAddress, scaSigner } = useSmartAccount();
+  const { scaAddress } = useSmartAccount();
   return (
     <>
       <MetaHeader title="Crowd Fund | a Scaffold-ETH 2 App" />

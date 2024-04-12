@@ -2,8 +2,8 @@ import React, { useCallback, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { AlchemyLightAddress } from "./AlchemyLightAddress";
 import { Bars3Icon } from "@heroicons/react/24/outline";
-import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -101,8 +101,10 @@ export const Header = () => {
         <ul className="hidden gap-2 px-1 lg:flex lg:flex-nowrap menu menu-horizontal">{navLinks}</ul>
       </div>
       <div className="flex-grow mr-4 navbar-end">
-        <RainbowKitCustomConnectButton />
-        <FaucetButton />
+        {/* <RainbowKitCustomConnectButton /> */}
+        {/* <FaucetButton /> */}
+
+        <AlchemyLightAddress />
       </div>
     </div>
   );

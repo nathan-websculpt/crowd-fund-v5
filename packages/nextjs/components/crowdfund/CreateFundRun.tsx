@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { encodeFunctionData, isAddress } from "viem";
 import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
 import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
-import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
@@ -20,7 +20,7 @@ export const CreateFundRun = () => {
   const [ownersList, setOwnersList] = useState<string[]>([]);
   const { scaAddress, scaSigner } = useSmartAccount();
   const transactor = useSmartTransactor();
-  const [isTxnLoading, setIsTxnLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const contractNames = getContractNames();
   const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
@@ -83,7 +83,7 @@ export const CreateFundRun = () => {
       notification.error("Cannot access smart account");
       return;
     }
-    setIsTxnLoading(true);
+    setIsLoading(true);
     try {
       const userOperationPromise = scaSigner.sendUserOperation({
         target: deployedContractData.address,
@@ -95,7 +95,7 @@ export const CreateFundRun = () => {
       notification.error("Oops, something went wrong");
       console.error("Error sending transaction: ", e);
     } finally {
-      setIsTxnLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -169,7 +169,6 @@ export const CreateFundRun = () => {
             ) : (
               <></>
             )}
-            {/* up-and-down */}
             <label className="text-lg font-bold">Title</label>
             <input
               type="text"
@@ -185,7 +184,6 @@ export const CreateFundRun = () => {
               value={descInput}
               onChange={e => setDescInput(e.target.value)}
             />
-            {/* ^^^ up-and-down ^^^ */}
             <label className="text-lg font-bold">Total Number of Addresses</label>
             <div className="form-control">
               <label className="cursor-pointer label">
@@ -236,9 +234,9 @@ export const CreateFundRun = () => {
             <button
               className="w-10/12 mx-auto md:w-3/5 btn btn-primary"
               onClick={() => validateThenWrite()}
-              disabled={isTxnLoading}
+              disabled={isLoading}
             >
-              {isTxnLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Start My Fund</>}
+              {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Start My Fund</>}
             </button>
           </div>
         </div>

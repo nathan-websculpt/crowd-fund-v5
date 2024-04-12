@@ -1,8 +1,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { IntegerVariant, isValidInteger } from "../scaffold-eth";
-import { useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
+import { encodeFunctionData, parseEther } from "viem";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
 
 interface FundRunProps {
   id: number;
@@ -11,28 +15,66 @@ interface FundRunProps {
 
 export const FundRunDonate = (fundRun: FundRunProps) => {
   const [donationInput, setDonationInput] = useState("");
+  const { scaSigner } = useSmartAccount();
+  const transactor = useSmartTransactor();
+  const [isLoading, setIsLoading] = useState(false);
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   function handleBigIntChange(newVal: string): void {
     const _v = newVal.trim();
     if (_v.length === 0 || _v === "." || isValidInteger(IntegerVariant.UINT256, _v, false)) setDonationInput(_v);
   }
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
+  const uoCallData = encodeFunctionData({
+    abi: [      
+      {
+        inputs: [
+          {
+            internalType: "uint16",
+            name: "_id",
+            type: "uint16",
+          },
+        ],
+        name: "donateToFundRun",
+        outputs: [],
+        stateMutability: "payable",
+        type: "function",
+      },
+    ],
     functionName: "donateToFundRun",
-    args: [fundRun?.id],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
-    },
-    value: donationInput,
+    args: [fundRun.id],
+    // nonce: 7,
   });
+
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        value: parseEther(donationInput),
+        target: deployedContractData.address,
+        data: uoCallData,
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const validateThenWrite = () => {
     if (donationInput.trim() === "" || donationInput.trim() === ".") {
       notification.warning("Please input a valid donation amount.", { position: "top-right", duration: 6000 });
       return;
     }
-    writeAsync();
+    sendUserOp();
   };
 
   return (
