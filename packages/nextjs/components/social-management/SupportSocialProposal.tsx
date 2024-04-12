@@ -42,7 +42,7 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
     // const proposalSupportSig: any = await scaSigner?.signMessage(digest.toString());
     //^^^ doesn't work
 
-    const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest));
+    // const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest));
     //^^^ doesn't work
 
     // const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest).toString());
@@ -53,6 +53,17 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
     //   message: { raw: toBytes(digest) },
     // });
     //^^^ doesn't work
+
+    // const proposalSupportSig: any = await scaSigner?.signMessage({
+    //   // account: scaAddress,
+    //   msg: { raw: toBytes(digest) },
+    // });
+    //TODO: ^^^retry
+
+    const proposalSupportSig: any = await scaSigner?.signMessage({
+      msg: toBytes(digest) ,
+    });
+    //^^^didn't work
     setSupportSignature(proposalSupportSig);
   };
   const sendUserOp = async () => {
@@ -92,7 +103,7 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
           ],
           functionName: "supportSocialProposal",
           args: [supportSignature, sp?.fundRunId, sp?.socialProposalId],
-          // nonce: 29,
+          // nonce: 17,
         }),
       });
 

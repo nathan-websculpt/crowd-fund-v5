@@ -65,7 +65,7 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     // const proposalCreationSig: any = await scaSigner?.signMessage(digest.toString());
     //^^^ doesn't work
 
-    const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest));
+    // const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest));
     //^^^ doesn't work
 
     //const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest).toString());
@@ -76,6 +76,17 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     //   message: { raw: toBytes(digest) },
     // });
     //^^^ doesn't work
+
+    // const proposalCreationSig: any = await scaSigner?.signMessage({
+    //   // account: scaAddress,
+    //   msg: { raw: toBytes(digest) },
+    // });
+    //TODO: ^^^retry
+
+    const proposalCreationSig: any = await scaSigner?.signMessage({
+      msg: toBytes(digest),
+    });
+    //^^^didn't work
     setCreationSignature(proposalCreationSig);
   };
 
