@@ -37,12 +37,22 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
 
   const supportProposal = async () => {
     const nonce = getNonce(fundRunNonce);
-    const digest = await getSocialManagementDigest(nonce, sp.postText, sp.proposedBy);
+    const digest = await getSocialManagementDigest(nonce, sp?.postText, sp?.proposedBy);
 
-    const proposalSupportSig: any = await scaSigner?.signMessage({
-      account: scaAddress,
-      message: { raw: toBytes(digest) },
-    });
+    // const proposalSupportSig: any = await scaSigner?.signMessage(digest.toString());
+    //^^^ doesn't work
+
+    const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest));
+    //^^^ doesn't work
+
+    // const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest).toString());
+    //^^^ doesn't work
+
+    // const proposalSupportSig: any = await scaSigner?.signMessage({
+    //   // account: scaAddress,
+    //   message: { raw: toBytes(digest) },
+    // });
+    //^^^ doesn't work
     setSupportSignature(proposalSupportSig);
   };
   const sendUserOp = async () => {
@@ -81,7 +91,8 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
             },
           ],
           functionName: "supportSocialProposal",
-          args: [supportSignature, sp.fundRunId, sp.socialProposalId],
+          args: [supportSignature, sp?.fundRunId, sp?.socialProposalId],
+          // nonce: 29,
         }),
       });
 

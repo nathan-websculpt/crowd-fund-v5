@@ -62,10 +62,20 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     const nonce = getNonce(fundRunNonce);
     const digest = await getSocialManagementDigest(nonce, postTextInput, scaAddress);
 
-    const proposalCreationSig: any = await scaSigner?.signMessage({
-      account: scaAddress,
-      message: { raw: toBytes(digest) },
-    });
+    // const proposalCreationSig: any = await scaSigner?.signMessage(digest.toString());
+    //^^^ doesn't work
+
+    const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest));
+    //^^^ doesn't work
+
+    //const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest).toString());
+    //^^^ doesn't work
+
+    // const proposalCreationSig: any = await scaSigner?.signMessage({
+    //   // account: scaAddress,
+    //   message: { raw: toBytes(digest) },
+    // });
+    //^^^ doesn't work
     setCreationSignature(proposalCreationSig);
   };
 
