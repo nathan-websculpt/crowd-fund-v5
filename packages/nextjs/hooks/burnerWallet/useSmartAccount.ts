@@ -4,7 +4,8 @@ import { loadBurnerSK } from "../scaffold-eth";
 import { useTargetNetwork } from "../scaffold-eth/useTargetNetwork";
 import { LightSmartContractAccount, getDefaultLightAccountFactoryAddress } from "@alchemy/aa-accounts";
 import { AlchemyProvider } from "@alchemy/aa-alchemy";
-import { Address, LocalAccountSigner, getDefaultEntryPointAddress } from "@alchemy/aa-core";
+import { Address, LocalAccountSigner, WalletClientSigner, getDefaultEntryPointAddress } from "@alchemy/aa-core";
+import { createWalletClient, custom, http } from "viem";
 import scaffoldConfig from "~~/scaffold.config";
 
 const burnerPK = loadBurnerSK();
@@ -16,6 +17,7 @@ const burnerSigner = LocalAccountSigner.privateKeyToAccountSigner(burnerPK);
 export const useSmartAccount = () => {
   const [scaAddress, setScaAddress] = useState<Address>();
   const [scaSigner, setScaSigner] = useState<AlchemyProvider>();
+  const [smartWalletSigner, setSmartWalletSigner] = useState<SmartAccountSigner>();
   const { targetNetwork: chain } = useTargetNetwork();
   const provider = useMemo(
     () =>
@@ -50,7 +52,30 @@ export const useSmartAccount = () => {
     setScaSigner(connectedProvider);
     getScaAddress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    
   }, [chain.id]);
 
-  return { provider, scaSigner, scaAddress };
+    //adding apr. 15th
+  useEffect(() => {
+
+    //WalletClientSigner
+    //The WalletClientSigner is useful if you want to convert a viem WalletClient to a SmartAccountSigner which can be used as a signer to use to connect to Smart Contract Accounts
+    //https://accountkit.alchemy.com/packages/aa-core/signers/wallet-client.html#walletclientsigner
+    const walletClient = createWalletClient({
+      account: scaAddress,
+      chain: chain,
+      // transport: custom(provider),
+      transport: http(`https://eth-sepolia.g.alchemy.com/v2/${scaffoldConfig.alchemyApiKey}`),
+    });
+
+    const signer: SmartAccountSigner = new WalletClientSigner(
+      walletClient,
+      "json-rpc", // signerType
+    );
+    setSmartWalletSigner(signer);
+  }, [scaAddress]);
+    //END: adding apr. 15th
+
+  return { provider, scaSigner, scaAddress, smartWalletSigner };
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import router from "next/router";
 import { Address } from "../scaffold-eth";
-import { SignMessageReturnType, encodeFunctionData, formatEther, toBytes } from "viem";
+import { SignMessageReturnType, encodeFunctionData, formatEther, keccak256, toBytes } from "viem";
 import getNonce from "~~/helpers/getNonce";
 import getSocialManagementDigest from "~~/helpers/getSocialManagementDigest";
 import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
@@ -23,7 +23,7 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
   const [creationSignature, setCreationSignature] = useState<SignMessageReturnType>();
   const [error, setError] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const { scaAddress, scaSigner } = useSmartAccount();
+  const { scaAddress, scaSigner, smartWalletSigner } = useSmartAccount();
   const transactor = useSmartTransactor();
   const [isLoading, setIsLoading] = useState(false);
   const contractNames = getContractNames();
@@ -83,10 +83,19 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     // });
     //TODO: ^^^retry
 
-    const proposalCreationSig: any = await scaSigner?.signMessage({
-      msg: toBytes(digest),
-    });
+    // const proposalCreationSig: any = await scaSigner?.signMessage({
+    //   msg: toBytes(digest),
+    // });
     //^^^didn't work
+
+    // const proposalCreationSig: any = await scaSigner?.signMessage("\x19Ethereum Signed Message:\n" + toBytes(digest));
+    //^^^didn't work
+
+    // const proposalCreationSig: any = await scaSigner?.signMessage(toBytes("\x19Ethereum Signed Message:\n") + toBytes(digest));
+    //^^^didn't work
+
+    const proposalCreationSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
+    
     setCreationSignature(proposalCreationSig);
   };
 

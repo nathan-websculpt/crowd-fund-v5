@@ -33,7 +33,9 @@ const getSocialManagementDigest = async (nonce: bigint, postText: string, propos
     },
   ]);
   const encodedWithNonce = encodePacked(["bytes", "uint256"], [encoded, nonce]);
-  const digest = keccak256(encodedWithNonce);
+  const digest = keccak256(encodedWithNonce); //orig
+  // const digest = keccak256(keccak256("\x19Ethereum Signed Message:\n") + encodedWithNonce); //nope
+  // const digest = keccak256("\x19Ethereum Signed Message:\n" + encodedWithNonce);
   return digest;
 };
 

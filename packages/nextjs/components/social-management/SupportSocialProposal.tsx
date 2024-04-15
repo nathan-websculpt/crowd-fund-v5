@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SignMessageReturnType, encodeFunctionData, toBytes } from "viem";
+import { SignMessageReturnType, encodeFunctionData, keccak256, toBytes } from "viem";
 import getNonce from "~~/helpers/getNonce";
 import getSocialManagementDigest from "~~/helpers/getSocialManagementDigest";
 import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
@@ -17,7 +17,7 @@ interface SupportSocialProposalProps {
 
 export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
   const [supportSignature, setSupportSignature] = useState<SignMessageReturnType>();
-  const { scaAddress, scaSigner } = useSmartAccount();
+  const { scaAddress, scaSigner, smartWalletSigner } = useSmartAccount();
   const transactor = useSmartTransactor();
   const [isLoading, setIsLoading] = useState(false);
   const contractNames = getContractNames();
@@ -60,10 +60,18 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
     // });
     //TODO: ^^^retry
 
-    const proposalSupportSig: any = await scaSigner?.signMessage({
-      msg: toBytes(digest) ,
-    });
+    // const proposalSupportSig: any = await scaSigner?.signMessage({
+    //   msg: toBytes(digest) ,
+    // });
     //^^^didn't work
+    
+    // const proposalSupportSig: any = await scaSigner?.signMessage( "\x19Ethereum Signed Message:\n" + toBytes(digest));
+    //^^^didn't work
+
+    // const proposalSupportSig: any = await scaSigner?.signMessage(toBytes("\x19Ethereum Signed Message:\n") + toBytes(digest));
+    //^^^didn't work
+
+    const proposalSupportSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
     setSupportSignature(proposalSupportSig);
   };
   const sendUserOp = async () => {
