@@ -52,30 +52,29 @@ export const useSmartAccount = () => {
     setScaSigner(connectedProvider);
     getScaAddress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-
-    
   }, [chain.id]);
 
-    //adding apr. 15th
+  //adding apr. 15th
   useEffect(() => {
+    if (scaAddress !== undefined && scaAddress !== null) {
+      //WalletClientSigner
+      //The WalletClientSigner is useful if you want to convert a viem WalletClient to a SmartAccountSigner which can be used as a signer to use to connect to Smart Contract Accounts
+      //https://accountkit.alchemy.com/packages/aa-core/signers/wallet-client.html#walletclientsigner
+      const walletClient = createWalletClient({
+        account: scaAddress,
+        chain: chain,
+        // transport: custom(provider),
+        transport: http(`https://eth-sepolia.g.alchemy.com/v2/${scaffoldConfig.alchemyApiKey}`),
+      });
 
-    //WalletClientSigner
-    //The WalletClientSigner is useful if you want to convert a viem WalletClient to a SmartAccountSigner which can be used as a signer to use to connect to Smart Contract Accounts
-    //https://accountkit.alchemy.com/packages/aa-core/signers/wallet-client.html#walletclientsigner
-    const walletClient = createWalletClient({
-      account: scaAddress,
-      chain: chain,
-      // transport: custom(provider),
-      transport: http(`https://eth-sepolia.g.alchemy.com/v2/${scaffoldConfig.alchemyApiKey}`),
-    });
-
-    const signer: SmartAccountSigner = new WalletClientSigner(
-      walletClient,
-      "json-rpc", // signerType
-    );
-    setSmartWalletSigner(signer);
+      const signer: SmartAccountSigner = new WalletClientSigner(
+        walletClient,
+        "json-rpc", // signerType
+      );
+      setSmartWalletSigner(signer);
+    }
   }, [scaAddress]);
-    //END: adding apr. 15th
+  //END: adding apr. 15th
 
   return { provider, scaSigner, scaAddress, smartWalletSigner };
 };
