@@ -71,7 +71,9 @@ export const SupportSocialProposal = (sp: SupportSocialProposalProps) => {
     // const proposalSupportSig: any = await scaSigner?.signMessage(toBytes("\x19Ethereum Signed Message:\n") + toBytes(digest));
     //^^^didn't work
 
-    const proposalSupportSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
+    // const proposalSupportSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
+
+    const proposalSupportSig: any = await scaSigner?.signMessage(toBytes(digest));
     setSupportSignature(proposalSupportSig);
   };
   const sendUserOp = async () => {

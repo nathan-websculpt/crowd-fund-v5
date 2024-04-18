@@ -94,7 +94,9 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     // const proposalCreationSig: any = await scaSigner?.signMessage(toBytes("\x19Ethereum Signed Message:\n") + toBytes(digest));
     //^^^didn't work
 
-    const proposalCreationSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
+    // const proposalCreationSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
+
+    const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest));
     
     setCreationSignature(proposalCreationSig);
   };
