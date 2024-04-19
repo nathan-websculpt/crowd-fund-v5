@@ -6,13 +6,18 @@ import { LightSmartContractAccount, getDefaultLightAccountFactoryAddress } from 
 import { AlchemyProvider } from "@alchemy/aa-alchemy";
 import {
   Address,
+  LocalAccountSigner,
   SmartAccountSigner,
   WalletClientSigner,
   getDefaultEntryPointAddress,
 } from "@alchemy/aa-core";
 import { createWalletClient, custom, http } from "viem";
 import scaffoldConfig from "~~/scaffold.config";
-import { dynamicSigner } from "../dynamic/dynamic";
+import { loadBurnerSK } from "../scaffold-eth";
+// import { dynamicSigner } from "../dynamic/dynamic";
+
+const burnerPK = loadBurnerSK();
+const burnerSigner = LocalAccountSigner.privateKeyToAccountSigner(burnerPK);
 
 //provider is an AlchemyProvider
 //connectedProvider is an new LightSmartContractAccount
@@ -44,8 +49,7 @@ export const useSmartAccount = () => {
     const connectedProvider = provider.connect(provider => {
       return new LightSmartContractAccount({
         rpcClient: provider,
-        // owner: burnerSigner,
-        owner: dynamicSigner,
+        owner: burnerSigner,
         chain,
         entryPointAddress: getDefaultEntryPointAddress(chain), //TODO: this must have to change when a Gas Manager is used?
         factoryAddress: getDefaultLightAccountFactoryAddress(chain),
@@ -62,8 +66,8 @@ export const useSmartAccount = () => {
 
   useEffect(() => {
     if (!provider) return;
-    if (!dynamicSigner) return;
-    connectToSmartContractAccount();
+    // if (!dynamicSigner) return;
+    //connectToSmartContractAccount();
   }, [provider]);
 
   return { provider, scaSigner, scaAddress, smartWalletSigner };

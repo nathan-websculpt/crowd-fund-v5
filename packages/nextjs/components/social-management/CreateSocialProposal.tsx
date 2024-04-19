@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import router from "next/router";
 import { Address } from "../scaffold-eth";
+import { useDynamicContext, useUserWallets } from "@dynamic-labs/sdk-react-core";
+import { UseDynamicContext } from "@dynamic-labs/sdk-react-core/src/lib/context/DynamicContext/useDynamicContext";
 import { SignMessageReturnType, encodeFunctionData, formatEther, keccak256, toBytes } from "viem";
 import getNonce from "~~/helpers/getNonce";
 import getSocialManagementDigest from "~~/helpers/getSocialManagementDigest";
@@ -23,6 +25,30 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
   const [creationSignature, setCreationSignature] = useState<SignMessageReturnType>();
   const [error, setError] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const {walletConnectorOptions} = useDynamicContext();
+  const userWallets = useUserWallets();
+
+  // const dynamicProvider = await primaryWallet?.connector?.getWalletClient();
+
+  // // a smart account signer you can use as an owner on ISmartContractAccount
+  // export const dynamicSigner: SmartAccountSigner = new WalletClientSigner(
+  //   dynamicProvider,
+  //   "dynamic" // signer type
+  // );
+
+  useEffect(() => {
+    if (walletConnectorOptions !== undefined) {
+      console.log("wallet connector options: ", walletConnectorOptions);
+    } 
+  }, [walletConnectorOptions]);
+
+  useEffect(() => {
+    if (userWallets !== undefined) {
+      console.log("user wallets: ", userWallets);
+    } 
+  }, [userWallets]);
+
   const { scaAddress, scaSigner, smartWalletSigner } = useSmartAccount();
   const transactor = useSmartTransactor();
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +123,7 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     // const proposalCreationSig: any = await smartWalletSigner?.signMessage(toBytes(digest));
 
     const proposalCreationSig: any = await scaSigner?.signMessage(toBytes(digest));
-    
+
     setCreationSignature(proposalCreationSig);
   };
 
