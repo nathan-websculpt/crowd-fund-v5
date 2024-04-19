@@ -15,6 +15,10 @@ import { useGlobalState } from "~~/services/store/store";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import { appChains } from "~~/services/web3/wagmiConnectors";
 import "~~/styles/globals.css";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { ZeroDevSmartWalletConnectors } from "@dynamic-labs/ethereum-aa";
+import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
+import { DynamicContextProvider } from "@dynamic-labs/sdk-react-core";
 
 const ScaffoldEthApp = ({ Component, pageProps }: AppProps) => {
   const price = useNativeCurrencyPrice();
@@ -41,23 +45,30 @@ const ScaffoldEthApp = ({ Component, pageProps }: AppProps) => {
 
   return (
     <ApolloProvider client={apolloClient}>
-      <WagmiConfig config={wagmiConfig}>
+      <DynamicContextProvider
+        settings={{
+          environmentId: "141df32e-91d2-4733-9730-2d4cffba4920",
+          walletConnectors: [EthereumWalletConnectors, ZeroDevSmartWalletConnectors],
+        }}
+      >
         <NextNProgress />
-        <RainbowKitProvider
-          chains={appChains.chains}
-          avatar={BlockieAvatar}
-          theme={isDarkTheme ? darkTheme() : lightTheme()}
-        >
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="relative flex flex-col flex-1">
-              <Component {...pageProps} />
-            </main>
-            <Footer />
-          </div>
-          <Toaster />
-        </RainbowKitProvider>
-      </WagmiConfig>
+        <DynamicWagmiConnector>
+          <RainbowKitProvider
+            chains={appChains.chains}
+            avatar={BlockieAvatar}
+            theme={isDarkTheme ? darkTheme() : lightTheme()}
+          >
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="relative flex flex-col flex-1">
+                <Component {...pageProps} />
+              </main>
+              <Footer />
+            </div>
+            <Toaster />
+          </RainbowKitProvider>
+        </DynamicWagmiConnector>
+      </DynamicContextProvider>
     </ApolloProvider>
   );
 };

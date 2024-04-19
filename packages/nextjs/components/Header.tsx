@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
+import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
 
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   const router = useRouter();
@@ -101,8 +102,9 @@ export const Header = () => {
         <ul className="hidden gap-2 px-1 lg:flex lg:flex-nowrap menu menu-horizontal">{navLinks}</ul>
       </div>
       <div className="flex-grow mr-4 navbar-end">
-        <RainbowKitCustomConnectButton />
-        <FaucetButton />
+        {/* <RainbowKitCustomConnectButton />
+        <FaucetButton /> */}
+        <DynamicWidget />
       </div>
     </div>
   );
