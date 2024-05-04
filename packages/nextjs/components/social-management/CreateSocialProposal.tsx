@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import router from "next/router";
 import { Address } from "../scaffold-eth";
-import { SignMessageReturnType, formatEther, toBytes } from "viem";
+import { SmartAccountSigner, WalletClientSigner } from "@alchemy/aa-core";
+import { SignMessageReturnType, encodeFunctionData, formatEther, toBytes } from "viem";
 import { useAccount, useWalletClient } from "wagmi";
 import getNonce from "~~/helpers/getNonce";
 import getSocialManagementDigest from "~~/helpers/getSocialManagementDigest";
-import { useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useSmartAccount } from "~~/hooks/burnerWallet/useSmartAccount";
+import { useSmartTransactor } from "~~/hooks/burnerWallet/useSmartTransactor";
+import { useDeployedContractInfo, useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { getContractNames } from "~~/utils/scaffold-eth/contractNames";
 
 interface CreateSocialProposalProps {
   fundRunId: number;
@@ -17,17 +21,39 @@ interface CreateSocialProposalProps {
 }
 
 export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
-  const userAccount = useAccount();
+  // const userAccount = useAccount();
   const [postTextInput, setPostTextInput] = useState("test post");
   const [creationSignature, setCreationSignature] = useState<SignMessageReturnType>();
   const [error, setError] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const { scaAddress, scaSigner } = useSmartAccount();
+  const [isLoading, setIsLoading] = useState(false);
+  const transactor = useSmartTransactor();
+  const contractNames = getContractNames();
+  const { data: deployedContractData } = useDeployedContractInfo(contractNames[0]);
 
   const { data: walletClient } = useWalletClient();
+  
+  const [signer, setSigner] = useState<SmartAccountSigner>(undefined);
+
+  useEffect(() => {
+    if (walletClient !== undefined) {
+      const ssss: SmartAccountSigner = new WalletClientSigner(
+        walletClient,
+        "json-rpc", // signerType
+      );
+      setSigner(
+        new WalletClientSigner(
+          walletClient,
+          "json-rpc", // signerType
+        ),
+      );
+    }
+  }, [walletClient]);
 
   useEffect(() => {
     if (creationSignature !== undefined) {
-      writeAsync();
+      sendUserOp();
     }
   }, [creationSignature]);
 
@@ -56,35 +82,96 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
     }
 
     const nonce = getNonce(fundRunNonce);
-    const digest = await getSocialManagementDigest(nonce, postTextInput, userAccount.address);
+    const digest = await getSocialManagementDigest(nonce, postTextInput, scaAddress);
 
-    const proposalCreationSig: any = await walletClient?.signMessage({
-      account: walletClient.account,
-      message: { raw: toBytes(digest) },
-    });
+    // const proposalCreationSig: any = await walletClient?.signMessage({
+    //   account: walletClient.account,
+    //   message: { raw: toBytes(digest) },
+    // });
+
+    // const proposalCreationSig: any = await signer?.signMessage({ raw: toBytes(digest) });
+
+    
+
+    const halp = await signer?.getAddress();
+    console.log("signer address:", halp);
+
+    // const proposalCreationSig: any = await signer?.signMessage(toBytes(digest));
+    const proposalCreationSig: any = await signer?.signMessage(toBytes(digest));
+    console.log("proposalCreationSig:",proposalCreationSig);
+
     setCreationSignature(proposalCreationSig);
   };
 
-  const { writeAsync, isLoading } = useScaffoldContractWrite({
-    contractName: "CrowdFund",
-    functionName: "createSocialProposal",
-    args: [
-      creationSignature,
-      fundRun?.fundRunId,
-      {
-        postText: postTextInput,
-        proposedBy: userAccount.address,
-      },
-    ],
-    onBlockConfirmation: txnReceipt => {
-      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
+  const sendUserOp = async () => {
+    if (!scaSigner) {
+      notification.error("Cannot access smart account");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userOperationPromise = scaSigner.sendUserOperation({
+        target: deployedContractData.address,
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                {
+                  internalType: "bytes",
+                  name: "_signature",
+                  type: "bytes",
+                },
+                {
+                  internalType: "uint16",
+                  name: "_id",
+                  type: "uint16",
+                },
+                {
+                  components: [
+                    {
+                      internalType: "string",
+                      name: "postText",
+                      type: "string",
+                    },
+                    {
+                      internalType: "address",
+                      name: "proposedBy",
+                      type: "address",
+                    },
+                  ],
+                  internalType: "struct CrowdFundLibrary.SocialMediaRequest",
+                  name: "_tx",
+                  type: "tuple",
+                },
+              ],
+              name: "createSocialProposal",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "createSocialProposal",
+          args: [
+            creationSignature,
+            fundRun?.fundRunId,
+            {
+              postText: postTextInput,
+              proposedBy: scaAddress,
+            },
+          ],
+        }),
+      });
+
+      await transactor(() => userOperationPromise);
+    } catch (e) {
+      console.log("err:",e);
+      notification.error("Oops, something went wrong");
+      console.error("Error sending transaction: ", e);
+    } finally {
+      setIsLoading(false);
       setCreationSignature(undefined);
-    },
-    onError: err => {
-      console.log("Transaction Error Message", err?.message);
-      setCreationSignature(undefined);
-    },
-  });
+    }
+  };
 
   return (
     <>
@@ -153,12 +240,8 @@ export const CreateSocialProposal = (fundRun: CreateSocialProposalProps) => {
           </div>
         </div>
 
-        <button
-          className="w-10/12 mx-auto md:w-3/5 btn btn-primary"
-          onClick={() => signNewProposal()}
-          disabled={isLoading}
-        >
-          {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Submit Proposal</>}
+        <button className="w-10/12 mx-auto md:w-3/5 btn btn-primary" onClick={() => signNewProposal()}>
+          Submit Proposal
         </button>
       </div>
     </>

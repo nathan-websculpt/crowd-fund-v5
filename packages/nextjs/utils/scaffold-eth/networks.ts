@@ -8,6 +8,7 @@ export type TChainAttributes = {
   // for networks having native currency other than ETH
   nativeCurrencyTokenAddress?: string;
 };
+export type ChainWithAttributes = chains.Chain & Partial<TChainAttributes>;
 
 export const NETWORKS_EXTRA_DATA: Record<string, TChainAttributes> = {
   [chains.hardhat.id]: {
@@ -52,6 +53,28 @@ export const NETWORKS_EXTRA_DATA: Record<string, TChainAttributes> = {
     color: "#1969ff",
   },
 };
+
+/**
+ * FROM: https://github.com/technophile-04/smart-wallet/blob/main/packages/nextjs/utils/scaffold-eth/networks.ts
+ * Gives the block explorer transaction URL, returns empty string if the network is a local chain
+ */
+export function getUserOpExplorerTxLink(chainId: number, txnHash: string) {
+  const chainNames = Object.keys(chains);
+
+  const targetChainArr = chainNames.filter(chainName => {
+    const wagmiChain = chains[chainName as keyof typeof chains];
+    return wagmiChain.id === chainId;
+  });
+
+  if (targetChainArr.length === 0) {
+    return "";
+  }
+
+  const targetChain = targetChainArr[0] as keyof typeof chains;
+  if (chains[targetChain].id === chains.baseGoerli.id)
+    return `https://app.jiffyscan.xyz/userOpHash/${txnHash}?network=base-testnet`;
+  return `https://app.jiffyscan.xyz/userOpHash/${txnHash}?network=${chains[targetChain].network}`;
+}
 
 /**
  * Gives the block explorer transaction URL.
